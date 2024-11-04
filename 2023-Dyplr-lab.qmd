@@ -1,0 +1,108 @@
+---
+title: "2023-Dyplr-lab"
+author: "Mathilde VALLAT"
+format: html
+---
+
+```{r}
+#| message: false
+here::i_am("2023-Dyplr-lab.Rproj")
+library(here)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+theme_set(theme_bw())
+```
+
+## Exercise 1
+
+Question 1 Load the data set using a local file name (preferably using here).
+
+```{r}
+#| message: false
+spotify <- read_delim(here("data", "top-spotify-songs-from-20102019-by-year.csv"))
+```
+
+Question 2 Using distinct (among other functions) compute the number of different songs, artists and musical genre that have been included in the data set.
+
+```{r}
+spotify|> distinct(`title`) |> summarise(n_title=n())
+spotify|> distinct(`artist`) |> summarise(n_artist=n())
+spotify|> distinct(`top genre`) |> summarise(n_topgenre=n())
+```
+
+Question 3 Compute the number of songs per year.
+
+```{r}
+spotify|> group_by(year) |> summarise(n_songsyearly=n())
+```
+
+Question 4 Find the most popular artist in the data set, i.e. the artist with the largest number of
+songs in the data set. Make sure to count each song only once.
+
+```{r}
+spotify|> group_by(artist) |> distinct(title)|>  summarise(n_songsartist=n()) |> filter(n_songsartist == 17)
+
+```
+Question 5 Compute the minimum, maximum, mean and median bpm as well as the number of songs for each musical genre. Make sure that each song is used only once in the analysis.
+
+```{r}
+spotify|> group_by(`top genre`) |> distinct(title, bpm) |> summarise(nsong=n(), min=min(bpm),max=max(bpm),mean=mean(bpm), median=median(bpm))
+```
+
+## Exercise 2
+
+Question 1 Load the data set using a local file name (preferably using here).
+
+```{r}
+#| message: false
+grades <- read_delim(here("data", "grades.csv"))
+```
+
+Question 2 Compute the minimum, maximum, median and mean grade at the Exam.
+
+```{r}
+grades |> summarise(minim=min(Exam,na.rm = TRUE),
+                    maxi=max(Exam,na.rm = TRUE),
+                    median=median(Exam, na.rm=TRUE),
+                    mean=mean(Exam, na.rm=TRUE))
+```
+Question 3 Extract the students who missed the Exam.
+
+```{r}
+grades |> mutate(missed = Exam |> is.na()) |> filter(missed==TRUE) |> select(Id)
+
+## correction
+grades %>% filter(is.na(Exam))
+
+```
+
+Question 4 Compute the number of students in each Group
+
+```{r}
+grades |> group_by(Group) |> summarise(n=n())
+```
+
+Question 5 Compute the number of students who missed the Exam in each Group. Beware that this number can be zero in some groups and this can induce difficulties with group_by. A way to circumvent this problem is to note that the sum of a vector of TRUE/FALSE values is exactly the number of times TRUE values that appear in the vector. For instance
+
+sum(c(TRUE, FALSE, TRUE))
+## [1] 2
+
+```{r}
+grades |> mutate(missed = Exam |> is.na()) |> group_by(Group,missed) |> summarise(s=n()) |> filter(missed==TRUE) |> select(-missed)
+```
+
+Question 6 Create a new data frame built from the grades data set reshapped to a long format. The new data frame should keep the Id and the Group as the orignal variables. The first lines of the data frame should have the following form (the actual values may be different)
+
+
+```{r}
+## grades |> pivot_longer(names_to=c(Exam, matches("MCQ_[1:10]"), matches("Online_MCQ_[1:19]")))
+
+## correction
+
+long_grades <- grades %>% pivot_longer(-c(Id, Group))
+
+```
+
+
