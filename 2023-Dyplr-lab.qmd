@@ -12,6 +12,7 @@ library(readr)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(stringr)
 theme_set(theme_bw())
 ```
 
@@ -68,6 +69,19 @@ grades |> summarise(minim=min(Exam,na.rm = TRUE),
                     median=median(Exam, na.rm=TRUE),
                     mean=mean(Exam, na.rm=TRUE))
 ```
+
+```{r}
+##CHAT GPT
+grades |> summarise(
+  minim = min(Exam, na.rm = TRUE),
+  maxi = max(Exam, na.rm = TRUE),
+  median = median(Exam, na.rm = TRUE),
+  mean = mean(Exam, na.rm = TRUE)
+)
+```
+
+
+
 Question 3 Extract the students who missed the Exam.
 
 ```{r}
@@ -76,12 +90,22 @@ grades |> mutate(missed = Exam |> is.na()) |> filter(missed==TRUE) |> select(Id)
 ## correction
 grades %>% filter(is.na(Exam))
 
+## CHAT GPT
+grades |> filter(is.na(Exam))
+
+
 ```
 
 Question 4 Compute the number of students in each Group
 
 ```{r}
 grades |> group_by(Group) |> summarise(n=n())
+
+##CHAT GPT
+grades |> group_by(Group) |> summarise(n_students = n())
+
+
+
 ```
 
 Question 5 Compute the number of students who missed the Exam in each Group. Beware that this number can be zero in some groups and this can induce difficulties with group_by. A way to circumvent this problem is to note that the sum of a vector of TRUE/FALSE values is exactly the number of times TRUE values that appear in the vector. For instance
@@ -91,6 +115,11 @@ sum(c(TRUE, FALSE, TRUE))
 
 ```{r}
 grades |> mutate(missed = Exam |> is.na()) |> group_by(Group,missed) |> summarise(s=n()) |> filter(missed==TRUE) |> select(-missed)
+
+##Chat GPT
+grades |> group_by(Group) |> summarise(n_missed = sum(is.na(Exam)))
+
+
 ```
 
 Question 6 Create a new data frame built from the grades data set reshapped to a long format. The new data frame should keep the Id and the Group as the orignal variables. The first lines of the data frame should have the following form (the actual values may be different)
@@ -103,12 +132,24 @@ Question 6 Create a new data frame built from the grades data set reshapped to a
 
 long_grades <- grades %>% pivot_longer(-c(Id, Group))
 
+##CHAT WRONG -> just needed to add starts_with("Online"),
+grades_long <- grades |> pivot_longer(
+  cols = starts_with("Exam") | starts_with("MCQ") | starts_with("Online"),
+  names_to = "name",
+  values_to = "value"
+)
+
+
+
 ```
 
 Question 7 Using the long format, compute the number of missing grades in total for each student.
 
 ```{r}
 long_grades |> group_by(Id) |> summarise(missed=sum(is.na(value)))
+
+##CHAT
+grades_long |> group_by(Id) |> summarise(n_missing = sum(is.na(value)))
 ```
 
 Question 8 Using the long format, compute the same information as in question 5.
@@ -117,6 +158,66 @@ Compute the number of students who missed the Exam in each Group.
 
 ```{r}
 long_grades |> group_by(Group) |> filter(name=="Exam") |> summarise(sum=sum(is.na(value)))
+
+##CHAT
+grades_long |> filter(name == "Exam") |> group_by(Group) |> summarise(n_missed = sum(is.na(value)))
+
+
 ```
+
+Question 9
+Using the long format, compute the number of missing grades for the online tests for each student.
+
+```{r}
+long_grades %>%
+  filter(str_starts(name, "Online")) %>%
+  group_by(Id) %>%
+  summarise(missed = sum(is.na(value)))
+
+##CHAT
+grades_long |> filter(str_starts(name, "Online")) |> group_by(Id) |> summarise(n_missing_online = sum(is.na(value)))
+
+
+```
+
+
+
+Question 10
+Create a table with two columns: Id to identify students and Missed with value TRUE when the student missed at least one MCQ_xx grade and FALSE otherwise.
+
+
+```{r}
+grades_long |> filter(str_starts(name, "MCQ")) |>
+  group_by(Id) |> summarise(Missed = any(is.na(value)))
+
+##CHAT GPT
+
+long_grades %>%
+  filter(str_starts(name, "MCQ")) %>%
+  group_by(Id) %>%
+  summarise(Missed = anyNA(value))
+
+
+```
+
+Question 11
+Create a table with two columns: Group to identify groups and P_missed with the percentage of students in each group who missed at least one MCQ_xx grade.
+
+```{r}
+grades_long |> filter(str_starts(name, "MCQ")) |>
+  group_by(Group, Id) |> summarise(Missed = any(is.na(value))) |>
+  group_by(Group) |> summarise(P_missed = mean(Missed) * 100)
+
+##CHAT GPT
+
+long_grades %>%
+  filter(str_starts(name, "MCQ")) %>%
+  group_by(Group, Id) %>%
+  summarise(Missed = anyNA(value)) %>%
+  summarise(p_missed = sum(Missed) / n())
+
+
+```
+
 
 
